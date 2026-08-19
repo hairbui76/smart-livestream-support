@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/hairbui76/smart-livestream-support/compare/v0.2.0...v0.2.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* report the real reason audio capture fails ([b820d31](https://github.com/hairbui76/smart-livestream-support/commit/b820d316793a8feede98bc453ba127449bb219f0))
+
 ## [0.2.0](https://github.com/hairbui76/smart-livestream-support/compare/v0.1.0...v0.2.0) (2026-08-19)
 
 
