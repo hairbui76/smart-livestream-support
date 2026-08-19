@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Runs in the same workflow (not on `release: published`) because releases created by
+  # GITHUB_TOKEN do not trigger new workflow runs.
+  build-windows:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # The whisper binary + 487 MB model are git-ignored, so fetch them before packaging.
+      - name: Download whisper.cpp binary and model
+        shell: pwsh
+        run: |
+          $dir = "resources/whisper"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/ggml-org/whisper.cpp/releases/download/v1.9.2/whisper-bin-x64.zip" -OutFile "$dir/whisper-bin-x64.zip"
+          Expand-Archive -Path "$dir/whisper-bin-x64.zip" -DestinationPath "$dir/_tmp" -Force
+          Move-Item "$dir/_tmp/Release/whisper-cli.exe" $dir -Force
+          Get-ChildItem "$dir/_tmp/Release" -Filter "*.dll" |
+            Where-Object { $_.Name -like "ggml*" -or $_.Name -eq "whisper.dll" } |
+            ForEach-Object { Move-Item $_.FullName $dir -Force }
+          Remove-Item "$dir/_tmp", "$dir/whisper-bin-x64.zip" -Recurse -Force
+          Invoke-WebRequest -Uri "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin" -OutFile "$dir/ggml-small.bin"
+
+      - name: Build installer
+        run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attach installer to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ needs.release-please.outputs.tag_name }}" release/*Setup*.exe --clobber

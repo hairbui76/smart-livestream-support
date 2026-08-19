@@ -1,0 +1,17 @@
+appId: ai.apexkorea.smart-livestream-support
+productName: Smart Livestream Support
+directories:
+  output: release
+files:
+  - out/**
+extraResources:
+  - from: resources/whisper
+    to: whisper
+win:
+  target:
+    - nsis
+  # Unsigned builds trigger SmartScreen warnings; add a certificate for public distribution.
+  # Building from Linux additionally requires wine — see the dist:win:linux script.
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
