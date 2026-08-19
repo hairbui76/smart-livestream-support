@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { AudioSource, IPC, TranscriptSegment } from '../shared/types'
 import { summarizeTranscript, translateText } from './ai/openaiService'
 import { getSettings, setSettings } from './settings'
+import { cancelDownload, downloadModel, getModelStatus } from './stt/modelManager'
 import { WhisperService } from './stt/whisperService'
 
 export function registerIpc(getWin: () => BrowserWindow | null): void {
@@ -40,6 +41,21 @@ export function registerIpc(getWin: () => BrowserWindow | null): void {
 
   ipcMain.handle(IPC.settingsGet, () => getSettings())
   ipcMain.handle(IPC.settingsSet, (_e, patch) => setSettings(patch))
+
+  ipcMain.handle(IPC.modelStatus, () => getModelStatus())
+
+  ipcMain.handle(IPC.modelDownload, async (_e, name: string) => {
+    // Remember the choice so the next launch resolves the same model.
+    setSettings({ modelName: name })
+    try {
+      await downloadModel(name, (p) => send(IPC.modelProgress, p))
+    } catch {
+      // The progress event already carried the message to the renderer.
+    }
+    return getModelStatus()
+  })
+
+  ipcMain.on(IPC.modelCancel, () => cancelDownload())
 
   ipcMain.on(IPC.windowControl, (_e, action: 'minimize' | 'hide' | 'close') => {
     const win = getWin()

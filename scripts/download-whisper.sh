@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# Downloads the whisper.cpp Windows binary + multilingual model into resources/whisper/.
+# Downloads the whisper.cpp Windows binary into resources/whisper/.
 # These files are git-ignored; run this once after cloning the repo.
+#
+# The speech model is NOT needed here — the app downloads it into userData on
+# first launch. Pass --with-model to grab it anyway (useful offline).
 set -euo pipefail
 
 WHISPER_VERSION="v1.9.2"
 MODEL="ggml-small.bin" # multilingual, needed for Vietnamese
+WITH_MODEL="${1:-}"
 DIR="$(cd "$(dirname "$0")/.." && pwd)/resources/whisper"
 
 mkdir -p "$DIR"
@@ -20,8 +24,8 @@ if [ ! -f whisper-cli.exe ]; then
   /bin/rm -rf _tmp whisper-bin-x64.zip
 fi
 
-if [ ! -f "$MODEL" ]; then
-  echo "Downloading $MODEL (~466 MB)..."
+if [ "$WITH_MODEL" = "--with-model" ] && [ ! -f "$MODEL" ]; then
+  echo "Downloading $MODEL (~465 MB)..."
   curl -L -o "$MODEL" \
     "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$MODEL"
 fi

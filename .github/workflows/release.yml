@@ -38,8 +38,9 @@ jobs:
 
       - run: npm ci
 
-      # The whisper binary + 487 MB model are git-ignored, so fetch them before packaging.
-      - name: Download whisper.cpp binary and model
+      # The whisper binary is git-ignored, so fetch it before packaging. The model is
+      # not bundled — the app downloads it on first launch.
+      - name: Download whisper.cpp binary
         shell: pwsh
         run: |
           $dir = "resources/whisper"
@@ -51,7 +52,6 @@ jobs:
             Where-Object { $_.Name -like "ggml*" -or $_.Name -eq "whisper.dll" } |
             ForEach-Object { Move-Item $_.FullName $dir -Force }
           Remove-Item "$dir/_tmp", "$dir/whisper-bin-x64.zip" -Recurse -Force
-          Invoke-WebRequest -Uri "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin" -OutFile "$dir/ggml-small.bin"
 
       - name: Build installer
         run: npm run dist:win

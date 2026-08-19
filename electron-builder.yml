@@ -5,8 +5,13 @@ directories:
 files:
   - out/**
 extraResources:
+  # Ship the whisper binary and its DLLs (~20 MB), but not the model — the app
+  # downloads that on first launch, keeping the installer small.
   - from: resources/whisper
     to: whisper
+    filter:
+      - '**/*'
+      - '!*.bin'
 win:
   target:
     - nsis

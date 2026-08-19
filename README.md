@@ -13,29 +13,31 @@ A floating AI toolbox for livestreams and video calls on **Windows**. It stays o
 - **Meeting summary** on demand — overview, key points, questions raised, action items, in English and Vietnamese.
 - **Panic key**: `Ctrl+Shift+Space` instantly hides/shows the toolbox.
 
-## Setup
+## Installing
 
-### 1. Install dependencies
+Grab the installer from the [latest release](https://github.com/hairbui76/smart-livestream-support/releases/latest) and run it.
+
+**On first launch** the app asks for a one-time speech-model download and shows progress:
+
+| Model | Size | When to pick it |
+| --- | --- | --- |
+| Base | 141 MB | Slower CPUs; faster but less accurate |
+| Small | 465 MB | Recommended — best accuracy/speed balance |
+
+The model lands in `%APPDATA%/Smart Livestream Support/models/` and is reused on every later launch. Downloads resume if interrupted, and are verified by exact size and file signature before being used. Only the model download touches the network for speech — **transcription itself always runs locally**, so no audio leaves your machine.
+
+Then paste an OpenAI API key (from https://platform.openai.com/api-keys) into **⚙ Settings** to enable translation and summaries. Defaults: `gpt-4o-mini` for live translation (fast/cheap), `gpt-4o` for summaries.
+
+## Developing
 
 ```bash
 npm install
+bash scripts/download-whisper.sh   # fetches whisper-cli.exe + DLLs (git-ignored)
 ```
 
-### 2. whisper.cpp (local speech-to-text) — bundled
+The whisper binary (~20 MB) is bundled into builds; the model is not. Add `--with-model` to the script to also pre-download `ggml-small.bin` into `resources/whisper/`, which the app will then use instead of downloading at runtime — handy when working offline.
 
-`resources/whisper/` ships with `whisper-cli.exe` (whisper.cpp v1.9.2, Windows x64), its DLLs, and the multilingual `ggml-small.bin` model — the app finds them automatically, and `npm run dist:win` packs them into the installer. **No setup needed.**
-
-These files are git-ignored (487 MB model); after a fresh clone, restore them with:
-
-```bash
-bash scripts/download-whisper.sh
-```
-
-To use a different binary (e.g. a CUDA build) or model, set explicit paths in **⚙ Settings** — they override the bundled copies.
-
-### 3. OpenAI API key
-
-Create a key at https://platform.openai.com/api-keys and paste it in **⚙ Settings**. Defaults: `gpt-4o-mini` for live translation (fast/cheap), `gpt-4o` for summaries.
+To use a different binary (e.g. a CUDA build) or model, set explicit paths in **⚙ Settings**; they override both the bundle and the download.
 
 ## Run in development
 
@@ -67,7 +69,7 @@ Versioning and changelog are handled by [release-please](https://github.com/goog
 - Pushing to `main` opens/updates a **release PR** that bumps the version and writes `CHANGELOG.md`
 - **Merging that PR** creates the git tag and GitHub Release, then `.github/workflows/release.yml` builds the Windows installer on a `windows-latest` runner and attaches it to the release
 
-The installer job downloads the whisper binary and model itself, since those are git-ignored.
+The installer job downloads the whisper binary itself, since it is git-ignored. The installer stays under ~100 MB because the speech model is fetched by the app on first launch instead of being packaged.
 
 > Builds are **unsigned**, so Windows SmartScreen will warn on first run ("More info" → "Run anyway"). Add a code-signing certificate to `electron-builder.yml` for public distribution.
 
@@ -82,6 +84,7 @@ Renderer (React UI)
 Main process
   ├─ WhisperService (per source): energy-based VAD cuts utterances,
   │    runs whisper.cpp CLI on each utterance → transcript segment
+  ├─ modelManager: first-launch model download (resumable, verified)
   ├─ OpenAI translate (gpt-4o-mini): EN↔VI per segment
   └─ OpenAI summarize (gpt-4o): full-transcript summary on demand
 ```

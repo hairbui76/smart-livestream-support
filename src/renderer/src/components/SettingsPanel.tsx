@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
-import type { AppSettings } from '../../../shared/types'
+import type { AppSettings, ModelStatus } from '../../../shared/types'
+import ModelSetup from './ModelSetup'
 
 export default function SettingsPanel(): JSX.Element {
   const [settings, setLocal] = useState<AppSettings | null>(null)
+  const [model, setModel] = useState<ModelStatus | null>(null)
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     void window.api.getSettings().then(setLocal)
+    void window.api.getModelStatus().then(setModel)
   }, [])
 
   if (!settings) return <div className="empty">Loading…</div>
@@ -55,11 +58,11 @@ export default function SettingsPanel(): JSX.Element {
         />
       </label>
       <label>
-        Whisper model path (optional — bundled ggml-small is used if empty)
+        Whisper model path (optional — overrides the downloaded model)
         <input
           value={settings.whisperModelPath}
           onChange={(e) => update({ whisperModelPath: e.target.value })}
-          placeholder="(auto: bundled ggml-small.bin)"
+          placeholder="(auto: downloaded model)"
         />
       </label>
       <label>
@@ -82,6 +85,13 @@ export default function SettingsPanel(): JSX.Element {
         Auto-translate every utterance (EN ↔ VI)
       </label>
       <button onClick={save}>{saved ? '✓ Saved' : 'Save settings'}</button>
+
+      {model && (
+        <div className="settings-section">
+          <h4>Speech model</h4>
+          <ModelSetup status={model} onStatusChange={setModel} />
+        </div>
+      )}
     </div>
   )
 }

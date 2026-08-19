@@ -3,6 +3,8 @@ import type {
   Api,
   AppSettings,
   AudioSource,
+  DownloadProgress,
+  ModelStatus,
   TranscriptSegment,
   TranslationResult
 } from '../shared/types'
@@ -39,6 +41,20 @@ const api: Api = {
   },
   setSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
     return ipcRenderer.invoke(IPC.settingsSet, patch)
+  },
+  getModelStatus(): Promise<ModelStatus> {
+    return ipcRenderer.invoke(IPC.modelStatus)
+  },
+  downloadModel(name: string): Promise<ModelStatus> {
+    return ipcRenderer.invoke(IPC.modelDownload, name)
+  },
+  cancelModelDownload(): void {
+    ipcRenderer.send(IPC.modelCancel)
+  },
+  onModelProgress(cb: (p: DownloadProgress) => void): () => void {
+    const listener = (_e: unknown, p: DownloadProgress): void => cb(p)
+    ipcRenderer.on(IPC.modelProgress, listener)
+    return () => ipcRenderer.removeListener(IPC.modelProgress, listener)
   },
   windowControl(action: 'minimize' | 'hide' | 'close'): void {
     ipcRenderer.send(IPC.windowControl, action)
