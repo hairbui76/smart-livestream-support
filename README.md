@@ -47,11 +47,29 @@ npm run dev
 
 ## Build a Windows installer
 
+**On Windows** — produces `release/Smart Livestream Support Setup <version>.exe`:
+
 ```bash
 npm run dist:win
 ```
 
-Output lands in `release/`.
+**On Linux/macOS** — building the NSIS installer for Windows requires `wine`. Without it, you can still produce a portable ZIP (unzip and run the `.exe` inside; no installer):
+
+```bash
+npm run dist:win:zip
+```
+
+## Releases
+
+Versioning and changelog are handled by [release-please](https://github.com/googleapis/release-please), driven by [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `feat: …` → minor bump · `fix: …` → patch bump · `feat!: …` / `BREAKING CHANGE:` → major bump
+- Pushing to `main` opens/updates a **release PR** that bumps the version and writes `CHANGELOG.md`
+- **Merging that PR** creates the git tag and GitHub Release, then `.github/workflows/release.yml` builds the Windows installer on a `windows-latest` runner and attaches it to the release
+
+The installer job downloads the whisper binary and model itself, since those are git-ignored.
+
+> Builds are **unsigned**, so Windows SmartScreen will warn on first run ("More info" → "Run anyway"). Add a code-signing certificate to `electron-builder.yml` for public distribution.
 
 ## How it works
 
