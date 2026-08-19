@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/hairbui76/smart-livestream-support/compare/v0.1.0...v0.2.0) (2026-08-19)
+
+
+### Features
+
+* download the speech model on first launch ([d5b4ac2](https://github.com/hairbui76/smart-livestream-support/commit/d5b4ac27c613be93346f98e96d8541610d60689f))
+
 ## 0.1.0 (2026-08-19)
 
 
