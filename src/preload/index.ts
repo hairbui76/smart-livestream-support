@@ -42,6 +42,9 @@ const api: Api = {
   setSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
     return ipcRenderer.invoke(IPC.settingsSet, patch)
   },
+  getDisplayMediaError(): Promise<string | null> {
+    return ipcRenderer.invoke(IPC.displayMediaError)
+  },
   getModelStatus(): Promise<ModelStatus> {
     return ipcRenderer.invoke(IPC.modelStatus)
   },

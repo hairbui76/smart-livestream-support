@@ -87,11 +87,48 @@ async function startCapture(source: AudioSource, stream: MediaStream): Promise<C
   }
 }
 
+/**
+ * Turn a media error into something the user can act on. Chromium's own
+ * messages ("The user aborted a request") say nothing about the real cause.
+ */
+async function explain(err: unknown, kind: AudioSource): Promise<string> {
+  const name = err instanceof DOMException ? err.name : ''
+  const detail = err instanceof Error ? err.message : String(err)
+
+  if (kind === 'system' && (name === 'AbortError' || name === 'NotAllowedError')) {
+    // The main process knows why it declined; Chromium does not pass it through.
+    const reason = await window.api.getDisplayMediaError()
+    if (reason) return reason
+  }
+
+  switch (name) {
+    case 'NotAllowedError':
+      return kind === 'mic'
+        ? 'Microphone access was refused. In Windows, open Settings → Privacy & security → Microphone and turn on "Let desktop apps access your microphone".'
+        : 'Screen and audio capture was refused by Windows.'
+    case 'NotFoundError':
+      return 'No microphone was found. Connect one, or choose a different input device in Windows sound settings.'
+    case 'NotReadableError':
+      return 'The audio device could not be opened — another app may have exclusive use of it.'
+    case 'AbortError':
+      return kind === 'mic'
+        ? `Windows would not start microphone capture (${detail}). The device may be held exclusively by another app, or you may be on a Remote Desktop session with no audio input.`
+        : `Windows would not start system-audio capture (${detail}). Loopback capture needs a local desktop session on Windows 10 2004 or newer.`
+    default:
+      return name ? `${name}: ${detail}` : detail
+  }
+}
+
 /** Capture the user's microphone. */
 export async function startMicCapture(): Promise<Capture> {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true }
-  })
+  let stream: MediaStream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true }
+    })
+  } catch (err) {
+    throw new Error(await explain(err, 'mic'))
+  }
   return startCapture('mic', stream)
 }
 
@@ -100,9 +137,24 @@ export async function startMicCapture(): Promise<Capture> {
  * The main process routes this request to WASAPI loopback on Windows.
  */
 export async function startSystemCapture(): Promise<Capture> {
-  const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
-  // We only need the audio; drop the mandatory video track immediately.
+  let stream: MediaStream
+  try {
+    // Video has to be requested even though it is discarded: getDisplayMedia
+    // rejects an audio-only request, and the loopback audio rides along with a
+    // screen source.
+    stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+  } catch (err) {
+    throw new Error(await explain(err, 'system'))
+  }
+
   stream.getVideoTracks().forEach((t) => t.stop())
-  const audioOnly = new MediaStream(stream.getAudioTracks())
-  return startCapture('system', audioOnly)
+  const audioTracks = stream.getAudioTracks()
+  if (audioTracks.length === 0) {
+    // Without this the app would sit silently recording nothing at all.
+    throw new Error(
+      'Windows granted screen capture but no audio track, so there is nothing to transcribe. ' +
+        'System-audio loopback needs Windows 10 2004 or newer.'
+    )
+  }
+  return startCapture('system', new MediaStream(audioTracks))
 }

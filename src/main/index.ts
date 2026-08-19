@@ -1,5 +1,6 @@
-import { app, BrowserWindow, desktopCapturer, globalShortcut, session } from 'electron'
+import { app, BrowserWindow, globalShortcut } from 'electron'
 import { join } from 'path'
+import { registerDisplayMediaHandler } from './displayMedia'
 import { registerIpc } from './ipc'
 
 let win: BrowserWindow | null = null
@@ -37,15 +38,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  // Route getDisplayMedia to WASAPI loopback so the renderer can capture
-  // system audio (what the other call participants are saying). Windows only.
-  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-    desktopCapturer
-      .getSources({ types: ['screen'] })
-      .then((sources) => callback({ video: sources[0], audio: 'loopback' }))
-      .catch(() => callback({}))
-  })
-
+  registerDisplayMediaHandler()
   createWindow()
   registerIpc(() => win)
 

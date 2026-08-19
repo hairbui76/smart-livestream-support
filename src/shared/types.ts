@@ -98,6 +98,8 @@ export interface Api {
   generateSummary(): Promise<string>
   getSettings(): Promise<AppSettings>
   setSettings(patch: Partial<AppSettings>): Promise<AppSettings>
+  /** Why the last getDisplayMedia request was refused, if it was. */
+  getDisplayMediaError(): Promise<string | null>
   getModelStatus(): Promise<ModelStatus>
   downloadModel(name: string): Promise<ModelStatus>
   cancelModelDownload(): void
@@ -114,6 +116,7 @@ export const IPC = {
   summaryGenerate: 'summary:generate',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
+  displayMediaError: 'display:last-error',
   modelStatus: 'model:status',
   modelDownload: 'model:download',
   modelCancel: 'model:cancel',

@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { AudioSource, IPC, TranscriptSegment } from '../shared/types'
 import { summarizeTranscript, translateText } from './ai/openaiService'
+import { getLastDisplayMediaError } from './displayMedia'
 import { getSettings, setSettings } from './settings'
 import { cancelDownload, downloadModel, getModelStatus } from './stt/modelManager'
 import { WhisperService } from './stt/whisperService'
@@ -41,6 +42,8 @@ export function registerIpc(getWin: () => BrowserWindow | null): void {
 
   ipcMain.handle(IPC.settingsGet, () => getSettings())
   ipcMain.handle(IPC.settingsSet, (_e, patch) => setSettings(patch))
+
+  ipcMain.handle(IPC.displayMediaError, () => getLastDisplayMediaError())
 
   ipcMain.handle(IPC.modelStatus, () => getModelStatus())
 
