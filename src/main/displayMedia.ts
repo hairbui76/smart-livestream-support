@@ -1,6 +1,7 @@
 import { desktopCapturer, DesktopCapturerSource, screen, session } from 'electron'
 import { release } from 'os'
 import { ScreenSource } from '../shared/types'
+import { logEvent } from './eventLog'
 
 /**
  * Reason the last getDisplayMedia request was refused. Chromium reports a bare
@@ -42,6 +43,7 @@ function pickScreen(sources: DesktopCapturerSource[]): DesktopCapturerSource {
   lastPick =
     `${chosen.name} id=${chosen.id} display_id=${chosen.display_id || '(empty)'} ` +
     `(primary=${primaryId}, ${sources.length} screen${sources.length === 1 ? '' : 's'})`
+  logEvent(`main: granted with ${lastPick}`)
   return chosen
 }
 
@@ -62,6 +64,9 @@ export async function listScreenSources(): Promise<ScreenSource[]> {
 export function registerDisplayMediaHandler(): void {
   session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
     lastError = null
+    logEvent(
+      `main: display-media handler invoked (audioRequested=${request.audioRequested}, videoRequested=${request.videoRequested})`
+    )
     try {
       // A zero thumbnail size skips grabbing screen bitmaps we never use, which
       // is both faster and one less thing that can fail.
@@ -71,11 +76,14 @@ export function registerDisplayMediaHandler(): void {
         fetchWindowIcons: false
       })
 
+      logEvent(`main: ${sources.length} screen source(s) enumerated`)
+
       if (sources.length === 0) {
         lastError =
           'Windows reported no capturable screen, so system audio could not be attached. ' +
           'This usually means the app lacks screen-capture access, or is running over Remote Desktop ' +
           `or in a session without a desktop. (${diagnostics()})`
+        logEvent(`main: declined — no screen sources`)
         callback({})
         return
       }
@@ -86,6 +94,7 @@ export function registerDisplayMediaHandler(): void {
       })
     } catch (err) {
       lastError = `Could not enumerate screen sources: ${describe(err)} (${diagnostics()})`
+      logEvent(`main: declined — ${describe(err)}`)
       callback({})
     }
   })

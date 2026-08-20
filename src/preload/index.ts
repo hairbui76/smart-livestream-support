@@ -53,6 +53,9 @@ const api: Api = {
   copyToClipboard(text: string): void {
     ipcRenderer.send(IPC.clipboardWrite, text)
   },
+  logEvent(message: string): void {
+    ipcRenderer.send(IPC.logEvent, message)
+  },
   getDisplayMediaError(): Promise<string | null> {
     return ipcRenderer.invoke(IPC.displayMediaError)
   },

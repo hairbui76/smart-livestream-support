@@ -3,6 +3,7 @@ import { existsSync } from 'fs'
 import { release } from 'os'
 import { Diagnostics } from '../shared/types'
 import { getLastDisplayMediaError, getLastScreenPick } from './displayMedia'
+import { readLogTail } from './eventLog'
 import { resolveModelPath } from './stt/modelManager'
 import { resolveWhisperPaths } from './stt/resources'
 
@@ -50,7 +51,8 @@ export async function collectDiagnostics(): Promise<Diagnostics> {
         ? { path: paths.error, exists: false }
         : { path: paths.binary, exists: existsSync(paths.binary) },
     modelPath,
-    lastDisplayMediaError: getLastDisplayMediaError()
+    lastDisplayMediaError: getLastDisplayMediaError(),
+    log: readLogTail()
   }
 }
 
@@ -72,7 +74,11 @@ export function formatDiagnostics(d: Diagnostics, extra: string[] = []): string 
     `whisper-cli   ${d.whisperBinary.exists ? d.whisperBinary.path : `MISSING — ${d.whisperBinary.path}`}`,
     `Model         ${d.modelPath ?? 'not downloaded'}`,
     `Last capture  ${d.lastDisplayMediaError ?? 'no failure recorded'}`,
-    ...extra
+    ...extra,
+    '',
+    d.log.length > 0
+      ? `Capture log (newest last):\n${d.log.map((l) => `  ${l}`).join('\n')}`
+      : 'Capture log  empty — no capture has been attempted yet'
   ]
   return lines.join('\n')
 }

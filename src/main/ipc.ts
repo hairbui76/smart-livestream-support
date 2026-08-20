@@ -3,6 +3,7 @@ import { AudioSource, IPC, TranscriptSegment } from '../shared/types'
 import { summarizeTranscript, translateText } from './ai/openaiService'
 import { collectDiagnostics, formatDiagnostics } from './diagnostics'
 import { getLastDisplayMediaError, listScreenSources } from './displayMedia'
+import { logEvent } from './eventLog'
 import { getSettings, setSettings } from './settings'
 import { cancelDownload, downloadModel, getModelStatus } from './stt/modelManager'
 import { WhisperService } from './stt/whisperService'
@@ -57,6 +58,8 @@ export function registerIpc(getWin: () => BrowserWindow | null): void {
 
   // Copying via the main process avoids depending on renderer clipboard permissions.
   ipcMain.on(IPC.clipboardWrite, (_e, text: string) => clipboard.writeText(text))
+
+  ipcMain.on(IPC.logEvent, (_e, message: string) => logEvent(message))
 
   ipcMain.handle(IPC.modelStatus, () => getModelStatus())
 

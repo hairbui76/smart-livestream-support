@@ -144,15 +144,22 @@ export async function startMicCapture(): Promise<Capture> {
   }
 
   let stream: MediaStream
+  window.api.logEvent('renderer: mic getUserMedia requested')
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true }
     })
   } catch (err) {
+    window.api.logEvent(`renderer: mic FAILED ${errName(err)} — ${errText(err)}`)
     throw new Error(await explain(err, 'mic'))
   }
+  window.api.logEvent(`renderer: mic started (${stream.getAudioTracks()[0]?.label ?? 'no label'})`)
   return startCapture('mic', stream)
 }
+
+const errName = (err: unknown): string =>
+  err instanceof DOMException ? err.name : err instanceof Error ? err.constructor.name : 'unknown'
+const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
 /**
  * Capture system (loopback) audio — what the other call participants say.
@@ -172,10 +179,14 @@ export async function startSystemCapture(): Promise<Capture> {
   // Preferred path: getDisplayMedia, routed to WASAPI loopback by the main
   // process. Video has to be requested even though it is discarded — an
   // audio-only request is rejected, and loopback rides along with a screen.
+  window.api.logEvent('renderer: system getDisplayMedia requested')
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
-    return startCapture('system', audioOnly(stream))
+    const audio = audioOnly(stream)
+    window.api.logEvent('renderer: system started via getDisplayMedia')
+    return startCapture('system', audio)
   } catch (err) {
+    window.api.logEvent(`renderer: getDisplayMedia FAILED ${errName(err)} — ${errText(err)}`)
     attempts.push(`getDisplayMedia: ${await explain(err, 'system')}`)
   }
 
@@ -191,17 +202,22 @@ export async function startSystemCapture(): Promise<Capture> {
   }
 
   for (const source of sources) {
+    window.api.logEvent(`renderer: trying legacy desktop constraint on ${source.name}`)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { mandatory: { chromeMediaSource: 'desktop' } },
         video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: source.id } }
       } as unknown as MediaStreamConstraints)
-      return startCapture('system', audioOnly(stream))
+      const audio = audioOnly(stream)
+      window.api.logEvent(`renderer: system started via legacy constraint on ${source.name}`)
+      return startCapture('system', audio)
     } catch (err) {
-      attempts.push(`${source.name}: ${err instanceof Error ? err.message : String(err)}`)
+      window.api.logEvent(`renderer: legacy ${source.name} FAILED ${errName(err)} — ${errText(err)}`)
+      attempts.push(`${source.name}: ${errText(err)}`)
     }
   }
 
+  window.api.logEvent(`renderer: system capture exhausted all ${attempts.length} route(s)`)
   throw new Error(
     `System audio could not be captured. Tried ${attempts.length} route${
       attempts.length === 1 ? '' : 's'

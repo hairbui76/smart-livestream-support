@@ -181,6 +181,17 @@ body {
 .diag-actions {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+.diag-result {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .diag-actions button {

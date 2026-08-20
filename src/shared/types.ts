@@ -111,12 +111,16 @@ export interface Diagnostics {
   whisperBinary: { path: string; exists: boolean }
   modelPath: string | null
   lastDisplayMediaError: string | null
+  /** Recent capture events from both processes, oldest first. */
+  log: string[]
 }
 
 export interface Api {
   getAppVersion(): Promise<string>
   getDiagnostics(): Promise<{ data: Diagnostics; text: string }>
   copyToClipboard(text: string): void
+  /** Record a renderer-side capture event into the shared log. */
+  logEvent(message: string): void
   sendAudioChunk(source: AudioSource, pcm: Float32Array): void
   setAudioState(source: AudioSource, active: boolean): void
   onSegment(cb: (s: TranscriptSegment) => void): () => void
@@ -149,6 +153,7 @@ export const IPC = {
   appVersion: 'app:version',
   diagnostics: 'app:diagnostics',
   clipboardWrite: 'app:clipboard-write',
+  logEvent: 'app:log-event',
   modelStatus: 'model:status',
   modelDownload: 'model:download',
   modelCancel: 'model:cancel',
