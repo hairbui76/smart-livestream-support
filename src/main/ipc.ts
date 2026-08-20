@@ -2,7 +2,7 @@ import { app, BrowserWindow, clipboard, ipcMain } from 'electron'
 import { AudioSource, IPC, TranscriptSegment } from '../shared/types'
 import { summarizeTranscript, translateText } from './ai/openaiService'
 import { collectDiagnostics, formatDiagnostics } from './diagnostics'
-import { getLastDisplayMediaError } from './displayMedia'
+import { getLastDisplayMediaError, listScreenSources } from './displayMedia'
 import { getSettings, setSettings } from './settings'
 import { cancelDownload, downloadModel, getModelStatus } from './stt/modelManager'
 import { WhisperService } from './stt/whisperService'
@@ -45,6 +45,8 @@ export function registerIpc(getWin: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.settingsSet, (_e, patch) => setSettings(patch))
 
   ipcMain.handle(IPC.displayMediaError, () => getLastDisplayMediaError())
+
+  ipcMain.handle(IPC.screenSources, () => listScreenSources())
 
   ipcMain.handle(IPC.appVersion, () => app.getVersion())
 

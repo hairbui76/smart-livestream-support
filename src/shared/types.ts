@@ -89,6 +89,12 @@ export interface DownloadProgress {
   cancelled?: boolean
 }
 
+export interface ScreenSource {
+  id: string
+  name: string
+  displayId: string
+}
+
 export interface Diagnostics {
   appVersion: string
   electron: string
@@ -100,6 +106,8 @@ export interface Diagnostics {
   packaged: boolean
   screenSources: string[]
   screenSourceError?: string
+  displayCount: number
+  lastScreenPick: string | null
   whisperBinary: { path: string; exists: boolean }
   modelPath: string | null
   lastDisplayMediaError: string | null
@@ -119,6 +127,7 @@ export interface Api {
   setSettings(patch: Partial<AppSettings>): Promise<AppSettings>
   /** Why the last getDisplayMedia request was refused, if it was. */
   getDisplayMediaError(): Promise<string | null>
+  getScreenSources(): Promise<ScreenSource[]>
   getModelStatus(): Promise<ModelStatus>
   downloadModel(name: string): Promise<ModelStatus>
   cancelModelDownload(): void
@@ -136,6 +145,7 @@ export const IPC = {
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   displayMediaError: 'display:last-error',
+  screenSources: 'display:sources',
   appVersion: 'app:version',
   diagnostics: 'app:diagnostics',
   clipboardWrite: 'app:clipboard-write',

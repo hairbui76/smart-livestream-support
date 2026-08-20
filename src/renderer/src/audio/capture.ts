@@ -1,4 +1,4 @@
-import type { AudioSource } from '../../../shared/types'
+import type { AudioSource, ScreenSource } from '../../../shared/types'
 
 const TARGET_RATE = 16000
 
@@ -167,24 +167,55 @@ export async function startSystemCapture(): Promise<Capture> {
     )
   }
 
-  let stream: MediaStream
+  const attempts: string[] = []
+
+  // Preferred path: getDisplayMedia, routed to WASAPI loopback by the main
+  // process. Video has to be requested even though it is discarded — an
+  // audio-only request is rejected, and loopback rides along with a screen.
   try {
-    // Video has to be requested even though it is discarded: getDisplayMedia
-    // rejects an audio-only request, and the loopback audio rides along with a
-    // screen source.
-    stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+    const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+    return startCapture('system', audioOnly(stream))
   } catch (err) {
-    throw new Error(await explain(err, 'system'))
+    attempts.push(`getDisplayMedia: ${await explain(err, 'system')}`)
   }
 
+  // Fallback: the legacy desktop-capture constraint. It bypasses
+  // getDisplayMedia entirely, so it can succeed when Chromium refuses the
+  // modern path — which is what happens on some multi-monitor setups. Each
+  // screen is tried, since only some of them may be accepted.
+  let sources: ScreenSource[] = []
+  try {
+    sources = await window.api.getScreenSources()
+  } catch (err) {
+    attempts.push(`screen enumeration: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
+  for (const source of sources) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { mandatory: { chromeMediaSource: 'desktop' } },
+        video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: source.id } }
+      } as unknown as MediaStreamConstraints)
+      return startCapture('system', audioOnly(stream))
+    } catch (err) {
+      attempts.push(`${source.name}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  throw new Error(
+    `System audio could not be captured. Tried ${attempts.length} route${
+      attempts.length === 1 ? '' : 's'
+    }:\n• ${attempts.join('\n• ')}`
+  )
+}
+
+/** Keep only the audio; the video track is a means to an end here. */
+function audioOnly(stream: MediaStream): MediaStream {
   stream.getVideoTracks().forEach((t) => t.stop())
   const audioTracks = stream.getAudioTracks()
   if (audioTracks.length === 0) {
     // Without this the app would sit silently recording nothing at all.
-    throw new Error(
-      'Windows granted screen capture but no audio track, so there is nothing to transcribe. ' +
-        'System-audio loopback needs Windows 10 2004 or newer.'
-    )
+    throw new Error('granted screen capture but no audio track, so there is nothing to transcribe')
   }
-  return startCapture('system', new MediaStream(audioTracks))
+  return new MediaStream(audioTracks)
 }

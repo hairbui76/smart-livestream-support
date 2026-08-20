@@ -6,6 +6,7 @@ import type {
   Diagnostics,
   DownloadProgress,
   ModelStatus,
+  ScreenSource,
   TranscriptSegment,
   TranslationResult
 } from '../shared/types'
@@ -54,6 +55,9 @@ const api: Api = {
   },
   getDisplayMediaError(): Promise<string | null> {
     return ipcRenderer.invoke(IPC.displayMediaError)
+  },
+  getScreenSources(): Promise<ScreenSource[]> {
+    return ipcRenderer.invoke(IPC.screenSources)
   },
   getModelStatus(): Promise<ModelStatus> {
     return ipcRenderer.invoke(IPC.modelStatus)

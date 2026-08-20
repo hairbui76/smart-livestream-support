@@ -1,8 +1,8 @@
-import { app, desktopCapturer } from 'electron'
+import { app, desktopCapturer, screen } from 'electron'
 import { existsSync } from 'fs'
 import { release } from 'os'
 import { Diagnostics } from '../shared/types'
-import { getLastDisplayMediaError } from './displayMedia'
+import { getLastDisplayMediaError, getLastScreenPick } from './displayMedia'
 import { resolveModelPath } from './stt/modelManager'
 import { resolveWhisperPaths } from './stt/resources'
 
@@ -21,7 +21,10 @@ export async function collectDiagnostics(): Promise<Diagnostics> {
       thumbnailSize: { width: 0, height: 0 },
       fetchWindowIcons: false
     })
-    screenSources = sources.map((s) => `${s.name} (${s.id})`)
+    // display_id matters: Chromium refuses a source it cannot map to a display.
+    screenSources = sources.map(
+      (s) => `${s.name} [id=${s.id} display_id=${s.display_id || 'EMPTY'}]`
+    )
   } catch (err) {
     screenSourceError = err instanceof Error ? err.message : String(err)
   }
@@ -40,6 +43,8 @@ export async function collectDiagnostics(): Promise<Diagnostics> {
     packaged: app.isPackaged,
     screenSources,
     screenSourceError,
+    displayCount: screen.getAllDisplays().length,
+    lastScreenPick: getLastScreenPick(),
     whisperBinary:
       'error' in paths
         ? { path: paths.error, exists: false }
@@ -55,13 +60,15 @@ export function formatDiagnostics(d: Diagnostics, extra: string[] = []): string 
     `App           ${d.appVersion}${d.packaged ? '' : ' (dev build, not packaged)'}`,
     `Electron      ${d.electron} · Chrome ${d.chrome} · Node ${d.node}`,
     `OS            ${d.platform} ${d.osRelease} ${d.arch}`,
+    `Displays      ${d.displayCount}`,
     `Screens       ${
       d.screenSourceError
         ? `ERROR: ${d.screenSourceError}`
         : d.screenSources.length === 0
           ? 'none found (system audio cannot attach)'
-          : d.screenSources.join(', ')
+          : d.screenSources.join('\n              ')
     }`,
+    `Screen chosen ${d.lastScreenPick ?? 'handler has not run yet'}`,
     `whisper-cli   ${d.whisperBinary.exists ? d.whisperBinary.path : `MISSING — ${d.whisperBinary.path}`}`,
     `Model         ${d.modelPath ?? 'not downloaded'}`,
     `Last capture  ${d.lastDisplayMediaError ?? 'no failure recorded'}`,

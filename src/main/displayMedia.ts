@@ -1,5 +1,6 @@
-import { desktopCapturer, session } from 'electron'
+import { desktopCapturer, DesktopCapturerSource, screen, session } from 'electron'
 import { release } from 'os'
+import { ScreenSource } from '../shared/types'
 
 /**
  * Reason the last getDisplayMedia request was refused. Chromium reports a bare
@@ -17,6 +18,42 @@ const describe = (err: unknown): string => (err instanceof Error ? err.message :
 /** Environment details worth having in a bug report about capture failures. */
 const diagnostics = (): string =>
   `${process.platform} ${release()}, Electron ${process.versions.electron}`
+
+/** Which source the last request handed to Chromium, for the diagnostics panel. */
+let lastPick: string | null = null
+
+export function getLastScreenPick(): string | null {
+  return lastPick
+}
+
+/**
+ * Choose which screen to attach the loopback audio to. With one monitor any
+ * source works, but with several, Chromium refuses a source it cannot map to a
+ * live display — and taking sources[0] blindly can hand it exactly that. Prefer
+ * the primary display, then any source carrying a display id.
+ */
+function pickScreen(sources: DesktopCapturerSource[]): DesktopCapturerSource {
+  const primaryId = String(screen.getPrimaryDisplay().id)
+  const chosen =
+    sources.find((s) => s.display_id === primaryId) ??
+    sources.find((s) => s.display_id) ??
+    sources[0]
+
+  lastPick =
+    `${chosen.name} id=${chosen.id} display_id=${chosen.display_id || '(empty)'} ` +
+    `(primary=${primaryId}, ${sources.length} screen${sources.length === 1 ? '' : 's'})`
+  return chosen
+}
+
+/** Screen sources for the renderer's fallback capture path. */
+export async function listScreenSources(): Promise<ScreenSource[]> {
+  const sources = await desktopCapturer.getSources({
+    types: ['screen'],
+    thumbnailSize: { width: 0, height: 0 },
+    fetchWindowIcons: false
+  })
+  return sources.map((s) => ({ id: s.id, name: s.name, displayId: s.display_id }))
+}
 
 /**
  * Route getDisplayMedia to WASAPI loopback so the renderer can capture system
@@ -44,7 +81,7 @@ export function registerDisplayMediaHandler(): void {
       }
 
       callback({
-        video: sources[0],
+        video: pickScreen(sources),
         ...(request.audioRequested ? { audio: 'loopback' as const } : {})
       })
     } catch (err) {
