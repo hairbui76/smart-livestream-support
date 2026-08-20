@@ -3,6 +3,7 @@ import type {
   Api,
   AppSettings,
   AudioSource,
+  Diagnostics,
   DownloadProgress,
   ModelStatus,
   TranscriptSegment,
@@ -41,6 +42,15 @@ const api: Api = {
   },
   setSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
     return ipcRenderer.invoke(IPC.settingsSet, patch)
+  },
+  getAppVersion(): Promise<string> {
+    return ipcRenderer.invoke(IPC.appVersion)
+  },
+  getDiagnostics(): Promise<{ data: Diagnostics; text: string }> {
+    return ipcRenderer.invoke(IPC.diagnostics)
+  },
+  copyToClipboard(text: string): void {
+    ipcRenderer.send(IPC.clipboardWrite, text)
   },
   getDisplayMediaError(): Promise<string | null> {
     return ipcRenderer.invoke(IPC.displayMediaError)

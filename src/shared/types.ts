@@ -89,7 +89,26 @@ export interface DownloadProgress {
   cancelled?: boolean
 }
 
+export interface Diagnostics {
+  appVersion: string
+  electron: string
+  chrome: string
+  node: string
+  platform: string
+  osRelease: string
+  arch: string
+  packaged: boolean
+  screenSources: string[]
+  screenSourceError?: string
+  whisperBinary: { path: string; exists: boolean }
+  modelPath: string | null
+  lastDisplayMediaError: string | null
+}
+
 export interface Api {
+  getAppVersion(): Promise<string>
+  getDiagnostics(): Promise<{ data: Diagnostics; text: string }>
+  copyToClipboard(text: string): void
   sendAudioChunk(source: AudioSource, pcm: Float32Array): void
   setAudioState(source: AudioSource, active: boolean): void
   onSegment(cb: (s: TranscriptSegment) => void): () => void
@@ -117,6 +136,9 @@ export const IPC = {
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   displayMediaError: 'display:last-error',
+  appVersion: 'app:version',
+  diagnostics: 'app:diagnostics',
+  clipboardWrite: 'app:clipboard-write',
   modelStatus: 'model:status',
   modelDownload: 'model:download',
   modelCancel: 'model:cancel',

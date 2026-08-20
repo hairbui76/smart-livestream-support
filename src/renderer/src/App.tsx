@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ModelStatus, TranscriptSegment } from '../../shared/types'
 import { Capture, startMicCapture, startSystemCapture } from './audio/capture'
+import DiagnosticsPanel from './components/DiagnosticsPanel'
 import ModelSetup from './components/ModelSetup'
 import SettingsPanel from './components/SettingsPanel'
 import SummaryPanel from './components/SummaryPanel'
@@ -15,11 +16,25 @@ export default function App(): JSX.Element {
   const [entries, setEntries] = useState<Entry[]>([])
   const [micOn, setMicOn] = useState(false)
   const [systemOn, setSystemOn] = useState(false)
-  const [error, setError] = useState('')
-  const [view, setView] = useState<'live' | 'summary' | 'settings' | 'model'>('live')
+  // Keyed so a mic failure and a system-audio failure stay separately visible
+  // instead of one overwriting the other.
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [view, setView] = useState<'live' | 'summary' | 'settings' | 'model' | 'diagnostics'>(
+    'live'
+  )
   const [model, setModel] = useState<ModelStatus | null>(null)
+  const [version, setVersion] = useState('')
   const micRef = useRef<Capture | null>(null)
   const systemRef = useRef<Capture | null>(null)
+
+  const setError = (key: string, message: string): void =>
+    setErrors((prev) => ({ ...prev, [key]: message }))
+  const clearError = (key: string): void =>
+    setErrors((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
 
   useEffect(() => {
     const offSegment = window.api.onSegment((s) =>
@@ -34,7 +49,8 @@ export default function App(): JSX.Element {
         )
       )
     )
-    const offError = window.api.onError((m) => setError(m))
+    const offError = window.api.onError((m) => setError('engine', m))
+    void window.api.getAppVersion().then(setVersion)
     return () => {
       offSegment()
       offTranslation()
@@ -51,7 +67,7 @@ export default function App(): JSX.Element {
   }, [])
 
   const toggleMic = async (): Promise<void> => {
-    setError('')
+    clearError('mic')
     if (micRef.current) {
       micRef.current.stop()
       micRef.current = null
@@ -62,12 +78,12 @@ export default function App(): JSX.Element {
       micRef.current = await startMicCapture()
       setMicOn(true)
     } catch (err) {
-      setError(`Mic capture failed: ${err instanceof Error ? err.message : String(err)}`)
+      setError('mic', `Mic: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
   const toggleSystem = async (): Promise<void> => {
-    setError('')
+    clearError('system')
     if (systemRef.current) {
       systemRef.current.stop()
       systemRef.current = null
@@ -78,14 +94,17 @@ export default function App(): JSX.Element {
       systemRef.current = await startSystemCapture()
       setSystemOn(true)
     } catch (err) {
-      setError(`System audio capture failed: ${err instanceof Error ? err.message : String(err)}`)
+      setError('system', `Call audio: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
   return (
     <div className="app">
       <header className="titlebar">
-        <span className="title">🎙 Livestream Support</span>
+        <span className="title">
+          🎙 Livestream Support
+          {version && <span className="version">v{version}</span>}
+        </span>
         <div className="titlebar-actions">
           <button title="Hide (Ctrl+Shift+Space to restore)" onClick={() => window.api.windowControl('hide')}>
             —
@@ -119,6 +138,13 @@ export default function App(): JSX.Element {
         <button className={view === 'settings' ? 'active' : ''} onClick={() => setView('settings')}>
           ⚙
         </button>
+        <button
+          className={view === 'diagnostics' ? 'active' : ''}
+          onClick={() => setView('diagnostics')}
+          title="Environment report for troubleshooting"
+        >
+          🩺
+        </button>
         {!model?.ready && (
           <button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}>
             ⬇ Model
@@ -127,17 +153,22 @@ export default function App(): JSX.Element {
         {view !== 'live' && <button onClick={() => setView('live')}>◀ Live</button>}
       </div>
 
-      {error && (
-        <div className="error" onClick={() => setError('')}>
-          {error}
+      {Object.entries(errors).map(([key, message]) => (
+        <div key={key} className="error">
+          <span>{message}</span>
+          <div className="error-actions">
+            <button onClick={() => setView('diagnostics')}>Diagnose</button>
+            <button onClick={() => clearError(key)}>Dismiss</button>
+          </div>
         </div>
-      )}
+      ))}
 
       <main className="content">
         {view === 'live' && <TranscriptPanel entries={entries} />}
         {view === 'summary' && <SummaryPanel />}
         {view === 'settings' && <SettingsPanel />}
         {view === 'model' && model && <ModelSetup status={model} onStatusChange={setModel} />}
+        {view === 'diagnostics' && <DiagnosticsPanel />}
       </main>
     </div>
   )

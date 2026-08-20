@@ -1,6 +1,7 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain } from 'electron'
 import { AudioSource, IPC, TranscriptSegment } from '../shared/types'
 import { summarizeTranscript, translateText } from './ai/openaiService'
+import { collectDiagnostics, formatDiagnostics } from './diagnostics'
 import { getLastDisplayMediaError } from './displayMedia'
 import { getSettings, setSettings } from './settings'
 import { cancelDownload, downloadModel, getModelStatus } from './stt/modelManager'
@@ -44,6 +45,16 @@ export function registerIpc(getWin: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.settingsSet, (_e, patch) => setSettings(patch))
 
   ipcMain.handle(IPC.displayMediaError, () => getLastDisplayMediaError())
+
+  ipcMain.handle(IPC.appVersion, () => app.getVersion())
+
+  ipcMain.handle(IPC.diagnostics, async () => {
+    const data = await collectDiagnostics()
+    return { data, text: formatDiagnostics(data) }
+  })
+
+  // Copying via the main process avoids depending on renderer clipboard permissions.
+  ipcMain.on(IPC.clipboardWrite, (_e, text: string) => clipboard.writeText(text))
 
   ipcMain.handle(IPC.modelStatus, () => getModelStatus())
 

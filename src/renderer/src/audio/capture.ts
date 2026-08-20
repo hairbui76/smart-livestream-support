@@ -119,8 +119,30 @@ async function explain(err: unknown, kind: AudioSource): Promise<string> {
   }
 }
 
+/**
+ * Count audio devices of a kind. Labels are hidden before permission is
+ * granted, but the entries themselves are still listed, so this distinguishes
+ * "no hardware at all" from "permission not granted yet".
+ */
+async function countDevices(kind: MediaDeviceKind): Promise<number> {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    return devices.filter((d) => d.kind === kind).length
+  } catch {
+    return -1 // unknown; do not block on it
+  }
+}
+
 /** Capture the user's microphone. */
 export async function startMicCapture(): Promise<Capture> {
+  if ((await countDevices('audioinput')) === 0) {
+    throw new Error(
+      'Windows reports no microphone at all. This is normal on a virtual machine or a Remote ' +
+        'Desktop session; on a physical PC, check that the mic is plugged in and enabled in ' +
+        'Settings → System → Sound → Input.'
+    )
+  }
+
   let stream: MediaStream
   try {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -137,6 +159,14 @@ export async function startMicCapture(): Promise<Capture> {
  * The main process routes this request to WASAPI loopback on Windows.
  */
 export async function startSystemCapture(): Promise<Capture> {
+  if ((await countDevices('audiooutput')) === 0) {
+    throw new Error(
+      'Windows reports no audio playback device, so there is no output to loop back. This is ' +
+        'normal on a virtual machine or a Remote Desktop session; on a physical PC, enable a ' +
+        'speaker or headphone device in Settings → System → Sound → Output.'
+    )
+  }
+
   let stream: MediaStream
   try {
     // Video has to be requested even though it is discarded: getDisplayMedia
