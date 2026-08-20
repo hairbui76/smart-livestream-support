@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/hairbui76/smart-livestream-support/compare/v0.3.1...v0.4.0) (2026-08-20)
+
+
+### Features
+
+* log every capture attempt and add self-tests ([fff8efc](https://github.com/hairbui76/smart-livestream-support/commit/fff8efc4a29ba6dda06e6777a8a381f63103a5a1))
+
 ## [0.3.1](https://github.com/hairbui76/smart-livestream-support/compare/v0.3.0...v0.3.1) (2026-08-20)
 
 
