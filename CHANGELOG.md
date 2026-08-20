@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/hairbui76/smart-livestream-support/compare/v0.3.0...v0.3.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* capture system audio reliably with multiple monitors ([64b1a26](https://github.com/hairbui76/smart-livestream-support/commit/64b1a2630272bb43dfef05deba84bf8e2f29f638))
+
 ## [0.3.0](https://github.com/hairbui76/smart-livestream-support/compare/v0.2.1...v0.3.0) (2026-08-20)
 
 
