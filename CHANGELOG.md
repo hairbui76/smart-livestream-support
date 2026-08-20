@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/hairbui76/smart-livestream-support/compare/v0.2.1...v0.3.0) (2026-08-20)
+
+
+### Features
+
+* add a diagnostics report and detect missing audio devices ([2f841c8](https://github.com/hairbui76/smart-livestream-support/commit/2f841c82b43952548c3f89bc9d94a22757354527))
+
 ## [0.2.1](https://github.com/hairbui76/smart-livestream-support/compare/v0.2.0...v0.2.1) (2026-08-19)
 
 
