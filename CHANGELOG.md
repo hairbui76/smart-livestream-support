@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/hairbui76/smart-livestream-support/compare/v0.4.0...v0.4.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* load the audio worklet from a file so capture can start ([1a415ab](https://github.com/hairbui76/smart-livestream-support/commit/1a415abc8acead908cfa7f53ba7d2c8ebd2fab3e))
+
 ## [0.4.0](https://github.com/hairbui76/smart-livestream-support/compare/v0.3.1...v0.4.0) (2026-08-20)
 
 
