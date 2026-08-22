@@ -2,14 +2,12 @@ import type { AudioSource, ScreenSource } from '../../../shared/types'
 
 const TARGET_RATE = 16000
 
-// AudioWorklet processor, loaded from a Blob URL to keep bundling simple.
-// Posts Float32Array blocks of raw PCM at the context sample rate.
-const WORKLET_SOURCE = `
+/** Inline copy of public/pcm-tap.js, used only if the file cannot be fetched. */
+const WORKLET_FALLBACK_SOURCE = `
 class PcmTap extends AudioWorkletProcessor {
   process(inputs) {
     const ch = inputs[0]
     if (ch && ch[0]) {
-      // Mix down to mono
       const n = ch[0].length
       const mono = new Float32Array(n)
       for (let c = 0; c < ch.length; c++) {
@@ -22,6 +20,43 @@ class PcmTap extends AudioWorkletProcessor {
 }
 registerProcessor('pcm-tap', PcmTap)
 `
+
+/**
+ * Load the PCM tap processor into an audio context.
+ *
+ * The worklet ships as a real file so it satisfies a `script-src 'self'`
+ * policy. A blob: URL — the obvious shortcut — is refused by that policy, and
+ * addModule reports the refusal as `AbortError: The user aborted a request`,
+ * which looks nothing like a CSP problem. The blob route is kept only as a
+ * fallback, and both failures are reported together.
+ */
+async function loadWorklet(ctx: AudioContext): Promise<void> {
+  const fileUrl = new URL('pcm-tap.js', window.location.href).href
+  try {
+    await ctx.audioWorklet.addModule(fileUrl)
+    window.api.logEvent(`renderer: worklet loaded from ${fileUrl}`)
+    return
+  } catch (fileErr) {
+    window.api.logEvent(`renderer: worklet file failed — ${errText(fileErr)}; trying blob`)
+
+    const blobUrl = URL.createObjectURL(
+      new Blob([WORKLET_FALLBACK_SOURCE], { type: 'text/javascript' })
+    )
+    try {
+      await ctx.audioWorklet.addModule(blobUrl)
+      window.api.logEvent('renderer: worklet loaded from blob fallback')
+      return
+    } catch (blobErr) {
+      window.api.logEvent(`renderer: worklet blob failed — ${errText(blobErr)}`)
+      throw new Error(
+        'Audio processing could not start: the audio worklet failed to load. ' +
+          `File route: ${errText(fileErr)}. Blob route: ${errText(blobErr)}.`
+      )
+    } finally {
+      URL.revokeObjectURL(blobUrl)
+    }
+  }
+}
 
 function downsample(input: Float32Array, fromRate: number): Float32Array {
   if (fromRate === TARGET_RATE) return input
@@ -43,9 +78,13 @@ export interface Capture {
 
 async function startCapture(source: AudioSource, stream: MediaStream): Promise<Capture> {
   const ctx = new AudioContext()
-  const workletUrl = URL.createObjectURL(new Blob([WORKLET_SOURCE], { type: 'text/javascript' }))
-  await ctx.audioWorklet.addModule(workletUrl)
-  URL.revokeObjectURL(workletUrl)
+  try {
+    await loadWorklet(ctx)
+  } catch (err) {
+    void ctx.close()
+    stream.getTracks().forEach((t) => t.stop())
+    throw err
+  }
 
   const src = ctx.createMediaStreamSource(stream)
   const tap = new AudioWorkletNode(ctx, 'pcm-tap')
@@ -153,8 +192,11 @@ export async function startMicCapture(): Promise<Capture> {
     window.api.logEvent(`renderer: mic FAILED ${errName(err)} — ${errText(err)}`)
     throw new Error(await explain(err, 'mic'))
   }
-  window.api.logEvent(`renderer: mic started (${stream.getAudioTracks()[0]?.label ?? 'no label'})`)
-  return startCapture('mic', stream)
+  const label = stream.getAudioTracks()[0]?.label ?? 'no label'
+  window.api.logEvent(`renderer: mic stream acquired (${label})`)
+  const capture = await startCapture('mic', stream)
+  window.api.logEvent('renderer: mic capture running')
+  return capture
 }
 
 const errName = (err: unknown): string =>
@@ -182,9 +224,11 @@ export async function startSystemCapture(): Promise<Capture> {
   window.api.logEvent('renderer: system getDisplayMedia requested')
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
-    const audio = audioOnly(stream)
-    window.api.logEvent('renderer: system started via getDisplayMedia')
-    return startCapture('system', audio)
+    // Must be awaited inside the try: returning the promise would let a
+    // rejection escape this catch, skipping the fallback route below.
+    const capture = await startCapture('system', audioOnly(stream))
+    window.api.logEvent('renderer: system capture running via getDisplayMedia')
+    return capture
   } catch (err) {
     window.api.logEvent(`renderer: getDisplayMedia FAILED ${errName(err)} — ${errText(err)}`)
     attempts.push(`getDisplayMedia: ${await explain(err, 'system')}`)
@@ -208,9 +252,9 @@ export async function startSystemCapture(): Promise<Capture> {
         audio: { mandatory: { chromeMediaSource: 'desktop' } },
         video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: source.id } }
       } as unknown as MediaStreamConstraints)
-      const audio = audioOnly(stream)
-      window.api.logEvent(`renderer: system started via legacy constraint on ${source.name}`)
-      return startCapture('system', audio)
+      const capture = await startCapture('system', audioOnly(stream))
+      window.api.logEvent(`renderer: system capture running via legacy route on ${source.name}`)
+      return capture
     } catch (err) {
       window.api.logEvent(`renderer: legacy ${source.name} FAILED ${errName(err)} — ${errText(err)}`)
       attempts.push(`${source.name}: ${errText(err)}`)
