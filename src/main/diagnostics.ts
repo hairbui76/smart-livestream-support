@@ -4,6 +4,7 @@ import { release } from 'os'
 import { Diagnostics } from '../shared/types'
 import { getLastDisplayMediaError, getLastScreenPick } from './displayMedia'
 import { readLogTail } from './eventLog'
+import { engineStatus } from './stt/whisperEngine'
 import { resolveModelPath } from './stt/modelManager'
 import { resolveWhisperPaths } from './stt/resources'
 
@@ -52,6 +53,7 @@ export async function collectDiagnostics(): Promise<Diagnostics> {
         : { path: paths.binary, exists: existsSync(paths.binary) },
     modelPath,
     lastDisplayMediaError: getLastDisplayMediaError(),
+    sttEngine: engineStatus(),
     log: readLogTail()
   }
 }
@@ -74,6 +76,7 @@ export function formatDiagnostics(d: Diagnostics, extra: string[] = []): string 
     `whisper-cli   ${d.whisperBinary.exists ? d.whisperBinary.path : `MISSING — ${d.whisperBinary.path}`}`,
     `Model         ${d.modelPath ?? 'not downloaded'}`,
     `Last capture  ${d.lastDisplayMediaError ?? 'no failure recorded'}`,
+    `Speech engine ${d.sttEngine}`,
     ...extra,
     '',
     d.log.length > 0

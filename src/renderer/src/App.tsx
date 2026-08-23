@@ -37,8 +37,18 @@ export default function App(): JSX.Element {
     })
 
   useEffect(() => {
+    // Partial and final text for one utterance share an id, so a final replaces
+    // the draft in place instead of repeating the sentence.
     const offSegment = window.api.onSegment((s) =>
-      setEntries((prev) => [...prev, s])
+      setEntries((prev) => {
+        const at = prev.findIndex((e) => e.id === s.id)
+        if (at === -1) return [...prev, s]
+        const next = [...prev]
+        // A final segment carries no `partial` flag at all, so clear it
+        // explicitly — spreading alone would leave the entry marked provisional.
+        next[at] = { ...next[at], ...s, partial: s.partial ?? false }
+        return next
+      })
     )
     const offTranslation = window.api.onTranslation((t) =>
       setEntries((prev) =>

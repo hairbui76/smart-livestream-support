@@ -14,12 +14,12 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)/resources/whisper"
 mkdir -p "$DIR"
 cd "$DIR"
 
-if [ ! -f whisper-cli.exe ]; then
+if [ ! -f whisper-cli.exe ] || [ ! -f whisper-server.exe ]; then
   echo "Downloading whisper.cpp $WHISPER_VERSION (Windows x64)..."
   curl -L -o whisper-bin-x64.zip \
     "https://github.com/ggml-org/whisper.cpp/releases/download/$WHISPER_VERSION/whisper-bin-x64.zip"
   unzip -o -q whisper-bin-x64.zip -d _tmp
-  mv _tmp/Release/whisper-cli.exe .
+  mv _tmp/Release/whisper-cli.exe _tmp/Release/whisper-server.exe .
   mv _tmp/Release/whisper.dll _tmp/Release/ggml*.dll .
   /bin/rm -rf _tmp whisper-bin-x64.zip
 fi

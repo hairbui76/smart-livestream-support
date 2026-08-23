@@ -75,6 +75,26 @@ export default function SettingsPanel(): JSX.Element {
           <option value="en">English</option>
           <option value="vi">Vietnamese</option>
         </select>
+        <small className="hint">
+          Picking the language is faster than auto-detect, which makes whisper do
+          an extra pass over every utterance.
+        </small>
+      </label>
+      <label className="row">
+        <input
+          type="checkbox"
+          checked={settings.livePartials}
+          onChange={(e) => update({ livePartials: e.target.checked })}
+        />
+        Show text while someone is still speaking
+      </label>
+      <label className="row">
+        <input
+          type="checkbox"
+          checked={settings.fastMode}
+          onChange={(e) => update({ fastMode: e.target.checked })}
+        />
+        Fast mode (much lower delay, slightly less accurate)
       </label>
       <label className="row">
         <input

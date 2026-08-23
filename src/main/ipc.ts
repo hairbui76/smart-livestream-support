@@ -16,8 +16,12 @@ export function registerIpc(getWin: () => BrowserWindow | null): void {
   }
 
   const handleSegment = (segment: TranscriptSegment): void => {
-    transcript.push(segment)
     send(IPC.sttSegment, segment)
+    // Provisional text is replaced within a second or two: keeping it out of the
+    // transcript keeps summaries clean, and out of translation keeps the API
+    // bill down — both would otherwise see every draft of every sentence.
+    if (segment.partial) return
+    transcript.push(segment)
     if (getSettings().autoTranslate) {
       translateText(segment.text)
         .then(({ translation, detectedLang }) =>

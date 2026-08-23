@@ -48,6 +48,7 @@ jobs:
           Invoke-WebRequest -Uri "https://github.com/ggml-org/whisper.cpp/releases/download/v1.9.2/whisper-bin-x64.zip" -OutFile "$dir/whisper-bin-x64.zip"
           Expand-Archive -Path "$dir/whisper-bin-x64.zip" -DestinationPath "$dir/_tmp" -Force
           Move-Item "$dir/_tmp/Release/whisper-cli.exe" $dir -Force
+          Move-Item "$dir/_tmp/Release/whisper-server.exe" $dir -Force
           Get-ChildItem "$dir/_tmp/Release" -Filter "*.dll" |
             Where-Object { $_.Name -like "ggml*" -or $_.Name -eq "whisper.dll" } |
             ForEach-Object { Move-Item $_.FullName $dir -Force }

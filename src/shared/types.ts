@@ -7,6 +7,11 @@ export interface TranscriptSegment {
   /** ISO timestamp when the segment was finalized */
   at: string
   lang?: string
+  /**
+   * True while the utterance is still being spoken. Partials share the id of
+   * the final segment that replaces them, so the UI updates in place.
+   */
+  partial?: boolean
 }
 
 export interface TranslationResult {
@@ -29,6 +34,17 @@ export interface AppSettings {
   sttLanguage: string
   /** Enable live translation of each segment */
   autoTranslate: boolean
+  /**
+   * Show provisional text while someone is still speaking, replaced by the
+   * final wording when the utterance ends.
+   */
+  livePartials: boolean
+  /**
+   * Trade a little accuracy for much lower latency: greedy decoding, no
+   * temperature fallback, and an encoder window sized to the clip instead of
+   * the full 30 s whisper always pads to.
+   */
+  fastMode: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -39,7 +55,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   whisperModelPath: '',
   modelName: 'ggml-small.bin',
   sttLanguage: 'auto',
-  autoTranslate: true
+  autoTranslate: true,
+  livePartials: true,
+  fastMode: true
 }
 
 export interface ModelSpec {
@@ -111,6 +129,8 @@ export interface Diagnostics {
   whisperBinary: { path: string; exists: boolean }
   modelPath: string | null
   lastDisplayMediaError: string | null
+  /** Which whisper backend is in use, and how it is performing. */
+  sttEngine: string
   /** Recent capture events from both processes, oldest first. */
   log: string[]
 }

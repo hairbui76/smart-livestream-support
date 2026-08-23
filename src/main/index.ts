@@ -2,6 +2,7 @@ import { app, BrowserWindow, globalShortcut } from 'electron'
 import { join } from 'path'
 import { registerDisplayMediaHandler } from './displayMedia'
 import { registerIpc } from './ipc'
+import { stopEngine } from './stt/whisperEngine'
 
 let win: BrowserWindow | null = null
 
@@ -49,5 +50,9 @@ app.whenReady().then(() => {
   })
 })
 
-app.on('will-quit', () => globalShortcut.unregisterAll())
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
+  // The speech server holds the model in memory; never let it outlive the app.
+  stopEngine()
+})
 app.on('window-all-closed', () => app.quit())

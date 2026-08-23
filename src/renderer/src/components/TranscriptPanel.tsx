@@ -21,13 +21,16 @@ export default function TranscriptPanel({ entries }: { entries: Entry[] }): JSX.
   return (
     <div className="transcript">
       {entries.map((e) => (
-        <div key={e.id} className={`entry ${e.source}`}>
+        <div key={e.id} className={`entry ${e.source}${e.partial ? ' partial' : ''}`}>
           <div className="entry-meta">
             <span className="badge">{e.source === 'mic' ? 'You' : 'Call'}</span>
             <span className="time">{e.at.slice(11, 19)}</span>
             {e.detectedLang && <span className="lang">{e.detectedLang}</span>}
           </div>
-          <div className="entry-text">{e.text}</div>
+          <div className="entry-text">
+            {e.text}
+            {e.partial && <span className="pending">…</span>}
+          </div>
           {e.translation && <div className="entry-translation">{e.translation}</div>}
         </div>
       ))}

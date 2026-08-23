@@ -408,3 +408,23 @@ body {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
+
+/* Provisional text, still being spoken — dimmed until the final wording lands. */
+.entry.partial {
+  opacity: 0.6;
+}
+
+.entry.partial .entry-text {
+  font-style: italic;
+}
+
+.pending {
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}

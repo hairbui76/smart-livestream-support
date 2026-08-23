@@ -32,7 +32,7 @@ Then paste an OpenAI API key (from https://platform.openai.com/api-keys) into **
 
 ```bash
 npm install
-bash scripts/download-whisper.sh   # fetches whisper-cli.exe + DLLs (git-ignored)
+bash scripts/download-whisper.sh   # fetches whisper-cli.exe, whisper-server.exe + DLLs (git-ignored)
 ```
 
 The whisper binary (~20 MB) is bundled into builds; the model is not. Add `--with-model` to the script to also pre-download `ggml-small.bin` into `resources/whisper/`, which the app will then use instead of downloading at runtime — handy when working offline.
@@ -82,8 +82,10 @@ Renderer (React UI)
   │   (WASAPI loopback)   │  batches ~250 ms chunks over IPC
   ▼                       ▼
 Main process
-  ├─ WhisperService (per source): energy-based VAD cuts utterances,
-  │    runs whisper.cpp CLI on each utterance → transcript segment
+  ├─ WhisperService (per source): adaptive VAD cuts utterances and emits
+  │    provisional text every ~1.2 s while someone is still speaking
+  ├─ whisperEngine: one resident whisper-server holds the model in memory
+  │    (falls back to the whisper-cli one-shot binary if it cannot start)
   ├─ modelManager: first-launch model download (resumable, verified)
   ├─ OpenAI translate (gpt-4o-mini): EN↔VI per segment
   └─ OpenAI summarize (gpt-4o): full-transcript summary on demand
@@ -93,4 +95,5 @@ Main process
 
 - Transcript lives in memory only; closing the app clears it.
 - The API key is stored in plaintext in Electron's `userData/settings.json`.
-- Latency per utterance ≈ utterance length detection (0.8 s silence) + whisper inference. Use `ggml-base.bin` or a machine with a fast CPU if `small` feels slow.
+- Provisional text appears while you speak and is replaced by the final wording ~0.5 s after you stop. Only final text is translated, summarized, or kept in the transcript.
+- See [docs/latency.md](docs/latency.md) for how the speech pipeline is tuned and what each setting costs. If `small` still feels slow, switch to `ggml-base.bin` in the model panel.
