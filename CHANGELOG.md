@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/hairbui76/smart-livestream-support/compare/v0.4.1...v0.5.0) (2026-08-23)
+
+
+### Features
+
+* make subtitles appear sooner and hold steady ([d465fd1](https://github.com/hairbui76/smart-livestream-support/commit/d465fd170558ce0e27d985c956f555292a7fc8ae))
+
 ## [0.4.1](https://github.com/hairbui76/smart-livestream-support/compare/v0.4.0...v0.4.1) (2026-08-22)
 
 
